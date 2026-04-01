@@ -45,7 +45,8 @@ export const App: React.FC = () => {
 
     getTodos()
       .then(setTodos)
-      .catch(() => showError('Unable to load todos'));
+      .catch(() => showError('Unable to load todos'))
+      .finally(() => setIsLoading(false));
 
     todoFieldRef.current?.focus();
   }, []);
@@ -69,12 +70,11 @@ export const App: React.FC = () => {
     const trimmedQuery = query.trim();
 
     if (!trimmedQuery) {
-      setErrorMessage('Title should not be empty');
+      showError('Title should not be empty');
 
       return;
     }
 
-    setErrorMessage(null);
     setTempTodo({
       id: 0,
       title: trimmedQuery,
@@ -91,6 +91,8 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         showError('Unable to add a todo');
+
+        return Promise.reject();
       })
       .finally(() => {
         setIsLoading(false);
@@ -100,8 +102,11 @@ export const App: React.FC = () => {
       });
   };
 
-  const deleteTodo = (todoId: number) => {
-    setErrorMessage(null);
+  const deleteTodo = (todoId: number, silent = false) => {
+    if (!silent) {
+      setErrorMessage(null);
+    }
+
     setDeletingIds(prev => [...prev, todoId]);
 
     return removeTodoApi(todoId)
@@ -109,7 +114,11 @@ export const App: React.FC = () => {
         setTodos(prev => prev.filter(t => t.id !== todoId));
       })
       .catch(() => {
-        showError('Unable to delete a todo');
+        if (!silent) {
+          showError('Unable to delete a todo');
+        }
+
+        return Promise.reject();
       })
       .finally(() => {
         setDeletingIds(prev => prev.filter(id => id !== todoId));
@@ -119,10 +128,14 @@ export const App: React.FC = () => {
 
   const clearCompleted = () => {
     const completedTodos = todos.filter(todo => todo.completed);
-    const promises = completedTodos.map(todo => deleteTodo(todo.id));
+    const promises = completedTodos.map(todo => deleteTodo(todo.id), true);
 
-    Promise.all(promises).catch(() => {
-      setErrorMessage('Unable to delete some todos');
+    Promise.allSettled(promises).then(results => {
+      const hasError = results.some(r => r.status === 'rejected');
+
+      if (hasError) {
+        showError('Unable to delete some todos');
+      }
     });
   };
 
