@@ -90,4 +90,4 @@ export const TodoItem: React.FC<Props> = ({
       </div>
     </div>
   );
-}
+};
