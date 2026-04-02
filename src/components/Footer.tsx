@@ -1,6 +1,7 @@
 import React from 'react';
 import { Status } from '../types/Status';
 import { Todo } from '../types/Todo';
+import classNames from 'classnames';
 
 type Props = {
   todos: Todo[];
@@ -27,7 +28,9 @@ export const Footer: React.FC<Props> = ({
         <a
           key={statusValue}
           href={statusValue === Status.All ? '#/' : `#/${statusValue}`}
-          className={`filter__link ${filter === statusValue ? 'selected' : ''}`}
+          className={classNames('filter__link', {
+            selected: filter === statusValue,
+          })}
           data-cy={`FilterLink${statusValue.charAt(0).toUpperCase() + statusValue.slice(1)}`}
           onClick={() => setFilter(statusValue)}
         >

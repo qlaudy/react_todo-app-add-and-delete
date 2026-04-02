@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React from 'react';
 import { Todo } from '../types/Todo';
+import classNames from 'classnames';
 
 type Props = {
   todo: Todo;
@@ -28,9 +29,18 @@ export const TodoItem: React.FC<Props> = ({
   submitRename,
 }) => {
   const isEditing = editingTodo?.id === todo.id;
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    submitRename();
+  };
 
   return (
-    <div data-cy="Todo" className={`todo ${todo.completed ? 'completed' : ''}`}>
+    <div
+      data-cy="Todo"
+      className={classNames('todo', {
+        completed: todo.completed,
+      })}
+    >
       <label className="todo__status-label">
         <input
           data-cy="TodoStatus"
@@ -51,12 +61,7 @@ export const TodoItem: React.FC<Props> = ({
       )}
 
       {isEditing && (
-        <form
-          onSubmit={event => {
-            event.preventDefault();
-            submitRename();
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <input
             data-cy="TodoTitleField"
             type="text"
@@ -83,7 +88,9 @@ export const TodoItem: React.FC<Props> = ({
 
       <div
         data-cy="TodoLoader"
-        className={`modal overlay ${deletingIds.includes(todo.id) ? 'is-active' : ''}`}
+        className={classNames('modal overlay', {
+          'is-active': deletingIds.includes(todo.id),
+        })}
       >
         <div className="modal-background has-background-white-ter" />
         <div className="loader" />
