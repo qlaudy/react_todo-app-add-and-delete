@@ -4,76 +4,90 @@ import { Todo } from '../types/Todo';
 
 type Props = {
   todo: Todo;
-  isDeleting?: boolean;
-  isTemp?: boolean;
-  editingTodo?: Todo | null;
-  newTitle?: string;
-  setEditingTodo?: (todo: Todo | null) => void;
-  setNewTitle?: (title: string) => void;
-  onDelete?: (id: number) => void;
+  deletingIds: number[];
+  toggleTodo: (todo: Todo) => void;
+  deleteTodo: (todoId: number, silent?: boolean) => Promise<void>;
+  editingTodo: Todo | null;
+  newTitle: string;
+  setNewTitle: (value: string) => void;
+  handleKeyDown: (event: React.KeyboardEvent) => void;
+  handleEditClick: (todo: Todo) => void;
+  submitRename: () => void;
 };
 
 export const TodoItem: React.FC<Props> = ({
   todo,
-  isDeleting,
-  isTemp,
+  deletingIds,
+  toggleTodo,
+  deleteTodo,
   editingTodo,
   newTitle,
-  setEditingTodo,
   setNewTitle,
-  onDelete,
+  handleKeyDown,
+  handleEditClick,
+  submitRename,
 }) => {
   const isEditing = editingTodo?.id === todo.id;
 
   return (
-    <div className={`todo ${todo.completed ? 'completed' : ''}`}>
+    <div data-cy="Todo" className={`todo ${todo.completed ? 'completed' : ''}`}>
       <label className="todo__status-label">
-        <input type="checkbox" checked={todo.completed} readOnly />
+        <input
+          data-cy="TodoStatus"
+          type="checkbox"
+          className="todo__status"
+          checked={todo.completed}
+          onChange={() => toggleTodo(todo)}
+        />
       </label>
+      {!isEditing && (
+        <span
+          data-cy="TodoTitle"
+          className="todo__title"
+          onDoubleClick={() => handleEditClick(todo)}
+        >
+          {todo.title}
+        </span>
+      )}
 
-      <span
-        className="todo__title"
-        onDoubleClick={() => {
-          if (!isTemp) {
-            setEditingTodo?.(todo);
-            setNewTitle?.(todo.title);
-          }
-        }}
-      >
-        {isEditing ? (
-          <form>
-            <input
-              className="todo__title-field"
-              autoFocus
-              value={newTitle}
-              onChange={e => setNewTitle?.(e.target.value)}
-              onKeyUp={e => {
-                if (e.key === 'Escape') {
-                  setEditingTodo?.(null);
-                }
-              }}
-            />
-          </form>
-        ) : (
-          todo.title
-        )}
-      </span>
+      {isEditing && (
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            submitRename();
+          }}
+        >
+          <input
+            data-cy="TodoTitleField"
+            type="text"
+            className="todo__title-field"
+            autoFocus
+            value={newTitle}
+            onChange={event => setNewTitle(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={submitRename}
+          />
+        </form>
+      )}
 
-      <button
-        type="button"
-        className="todo__remove"
-        disabled={isTemp}
-        onClick={() => onDelete?.(todo.id)}
-      >
-        ×
-      </button>
+      {!isEditing && (
+        <button
+          type="button"
+          className="todo__remove"
+          data-cy="TodoDelete"
+          onClick={() => deleteTodo(todo.id)}
+        >
+          ×
+        </button>
+      )}
 
       <div
-        className={`modal overlay ${isDeleting || isTemp ? 'is-active' : ''}`}
+        data-cy="TodoLoader"
+        className={`modal overlay ${deletingIds.includes(todo.id) ? 'is-active' : ''}`}
       >
         <div className="modal-background has-background-white-ter" />
         <div className="loader" />
       </div>
     </div>
   );
-};
+}

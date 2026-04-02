@@ -2,14 +2,20 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useRef, useState } from 'react';
 import { UserWarning } from './UserWarning';
-import { createTodo, getTodos, removeTodoApi, USER_ID } from './api/todos';
+import {
+  createTodo,
+  getTodos,
+  removeTodoApi,
+  updateTodoApi,
+  USER_ID,
+} from './api/todos';
 import { Todo } from './types/Todo';
 import { ErrorMessage } from './types/ErrorMessage';
 import { Status } from './types/Status';
-import { Header } from './components/Header';
-import { ErrorNotification } from './components/ErrorNotification';
-import { Footer } from './components/Footer';
-import { TodoList } from './components/TodoList';
+import { Header } from './Components/Header';
+import { TodoList } from './Components/TodoList';
+import { Footer } from './Components/Footer';
+import { ErrorNotification } from './Components/ErrorNotification';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -32,15 +38,16 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    setIsLoading(true);
-
     getTodos()
       .then(setTodos)
-      .catch(() => showError(ErrorMessage.Load))
-      .finally(() => setIsLoading(false));
-
-    todoFieldRef.current?.focus();
+      .catch(() => showError(ErrorMessage.Load));
   }, []);
+
+  useEffect(() => {
+    if (!tempTodo) {
+      todoFieldRef.current?.focus();
+    }
+  }, [tempTodo]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -86,14 +93,10 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         showError(ErrorMessage.Add);
-
-        return Promise.reject();
       })
       .finally(() => {
         setIsLoading(false);
         setTempTodo(null);
-
-        todoFieldRef.current?.focus();
       });
   };
 
@@ -123,7 +126,7 @@ export const App: React.FC = () => {
 
   const clearCompleted = () => {
     const completedTodos = todos.filter(todo => todo.completed);
-    const promises = completedTodos.map(todo => deleteTodo(todo.id), true);
+    const promises = completedTodos.map(todo => deleteTodo(todo.id, true));
 
     Promise.allSettled(promises).then(results => {
       const hasError = results.some(r => r.status === 'rejected');
@@ -134,46 +137,140 @@ export const App: React.FC = () => {
     });
   };
 
+  const toggleTodo = (todo: Todo) => {
+    setDeletingIds(prev => [...prev, todo.id]);
+
+    return updateTodoApi(todo.id, { completed: !todo.completed })
+      .then(updateTodo => {
+        setTodos(prev => prev.map(t => (t.id === todo.id ? updateTodo : t)));
+      })
+      .catch(() => {
+        setErrorMessage(ErrorMessage.Update);
+        setTimeout(() => {
+          setErrorMessage(null);
+        }, 3000);
+      })
+      .finally(() => {
+        setDeletingIds(prev => prev.filter(id => id !== todo.id));
+      });
+  };
+
+  const toggleAll = () => {
+    const areAllCompleted = todos.every(todo => todo.completed);
+
+    const todosToUpdate = areAllCompleted
+      ? todos
+      : todos.filter(todo => !todo.completed);
+
+    const promises = todosToUpdate.map(todo => toggleTodo(todo));
+
+    Promise.all(promises).catch(() => {
+      setErrorMessage(ErrorMessage.Update);
+    });
+  };
+
+  const handleEditClick = (todo: Todo) => {
+    setEditingTodo(todo);
+    setNewTitle(todo.title);
+  };
+
+  const submitRename = () => {
+    if (!editingTodo) {
+      return;
+    }
+
+    const trimmedTitle = newTitle.trim();
+
+    if (!trimmedTitle) {
+      deleteTodo(editingTodo.id)
+        .then(() => {
+          setEditingTodo(null);
+        })
+        .catch(() => {});
+
+      return;
+    }
+
+    if (trimmedTitle === editingTodo.title) {
+      setEditingTodo(null);
+
+      return;
+    }
+
+    setDeletingIds(prev => [...prev, editingTodo.id]);
+
+    updateTodoApi(editingTodo.id, { title: trimmedTitle })
+      .then(updatedTodo => {
+        setTodos(prev =>
+          prev.map(todo => (todo.id === editingTodo.id ? updatedTodo : todo)),
+        );
+        setEditingTodo(null);
+      })
+      .catch(() => {
+        showError(ErrorMessage.Update);
+      })
+      .finally(() => {
+        setDeletingIds(prev => prev.filter(id => id !== editingTodo.id));
+      });
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      setEditingTodo(null);
+      setNewTitle('');
+    }
+  };
+
   return (
     <div className="todoapp">
       <h1 className="todoapp__title">todos</h1>
 
       <div className="todoapp__content">
         <Header
+          todos={todos}
           query={query}
           setQuery={setQuery}
-          onSubmit={handleSubmit}
+          handleSubmit={handleSubmit}
+          toggleAll={toggleAll}
           isLoading={isLoading}
-          hasTempTodo={!!tempTodo}
+          tempTodo={tempTodo}
+          todoFieldRef={todoFieldRef}
         />
 
         {(todos.length > 0 || tempTodo) && (
           <TodoList
-            todos={visibleTodos}
+            visibleTodos={visibleTodos}
             tempTodo={tempTodo}
             deletingIds={deletingIds}
+            toggleTodo={toggleTodo}
+            deleteTodo={deleteTodo}
             editingTodo={editingTodo}
             newTitle={newTitle}
-            setEditingTodo={setEditingTodo}
             setNewTitle={setNewTitle}
-            onDelete={deleteTodo}
+            handleKeyDown={handleKeyDown}
+            handleEditClick={handleEditClick}
+            submitRename={submitRename}
           />
         )}
 
+        {/* Hide the footer if there are no todos */}
+
         {todos.length > 0 && (
           <Footer
-            count={activeTodosCount}
+            todos={todos}
+            activeTodosCount={activeTodosCount}
             filter={filter}
             setFilter={setFilter}
-            hasCompleted={todos.some(t => t.completed)}
-            onClear={clearCompleted}
+            clearCompleted={clearCompleted}
           />
         )}
       </div>
 
+      {/* DON'T use conditional rendering to hide the notification */}
+      {/* Add the 'hidden' class to hide the message smoothly */}
       <ErrorNotification
-        message={errorMessage}
-        onClose={() => setErrorMessage(null)}
+        errorMessage={errorMessage}
+        setErrorMessage={setErrorMessage}
       />
     </div>
   );

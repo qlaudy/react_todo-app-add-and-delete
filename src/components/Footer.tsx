@@ -1,37 +1,48 @@
 import React from 'react';
 import { Status } from '../types/Status';
+import { Todo } from '../types/Todo';
 
 type Props = {
-  count: number;
+  todos: Todo[];
+  activeTodosCount: number;
   filter: Status;
-  setFilter: (s: Status) => void;
-  hasCompleted: boolean;
-  onClear: () => void;
+  setFilter: (value: Status) => void;
+  clearCompleted: () => void;
 };
 
 export const Footer: React.FC<Props> = ({
-  count,
+  todos,
+  activeTodosCount,
   filter,
   setFilter,
-  hasCompleted,
-  onClear,
+  clearCompleted,
 }) => (
-  <footer className="todoapp__footer">
-    <span>{count} items left</span>
+  <footer className="todoapp__footer" data-cy="Footer">
+    <span className="todo-count" data-cy="TodosCounter">
+      {activeTodosCount} items left
+    </span>
 
-    <nav className="filter">
-      {Object.values(Status).map(status => (
+    <nav className="filter" data-cy="Filter">
+      {Object.values(Status).map(statusValue => (
         <a
-          key={status}
-          className={filter === status ? 'selected' : ''}
-          onClick={() => setFilter(status)}
+          key={statusValue}
+          href={statusValue === Status.All ? '#/' : `#/${statusValue}`}
+          className={`filter__link ${filter === statusValue ? 'selected' : ''}`}
+          data-cy={`FilterLink${statusValue.charAt(0).toUpperCase() + statusValue.slice(1)}`}
+          onClick={() => setFilter(statusValue)}
         >
-          {status}
+          {statusValue.charAt(0).toUpperCase() + statusValue.slice(1)}
         </a>
       ))}
     </nav>
 
-    <button disabled={!hasCompleted} onClick={onClear}>
+    <button
+      type="button"
+      className="todoapp__clear-completed"
+      data-cy="ClearCompletedButton"
+      disabled={!todos.some(todo => todo.completed)}
+      onClick={clearCompleted}
+    >
       Clear completed
     </button>
   </footer>
