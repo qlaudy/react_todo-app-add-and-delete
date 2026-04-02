@@ -12,10 +12,10 @@ import {
 import { Todo } from './types/Todo';
 import { ErrorMessage } from './types/ErrorMessage';
 import { Status } from './types/Status';
-import { Header } from './Components/Header';
-import { TodoList } from './Components/TodoList';
-import { Footer } from './Components/Footer';
-import { ErrorNotification } from './Components/ErrorNotification';
+import { Header } from './components/Header';
+import { TodoList } from './components/TodoList';
+import { Footer } from './components/Footer';
+import { ErrorNotification } from './components/ErrorNotification';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
